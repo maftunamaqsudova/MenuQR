@@ -51,7 +51,7 @@ public class AppDbContext : DbContext
             e.HasOne(m => m.Restaurant)
              .WithMany(r => r.MenuItems)
              .HasForeignKey(m => m.RestaurantId)
-             .OnDelete(DeleteBehavior.Cascade);
+             .OnDelete(DeleteBehavior.Restrict);
             e.HasOne(m => m.Category)
              .WithMany(c => c.MenuItems)
              .HasForeignKey(m => m.CategoryId)

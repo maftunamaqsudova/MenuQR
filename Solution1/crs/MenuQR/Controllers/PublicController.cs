@@ -35,9 +35,10 @@ public class PublicController : ControllerBase
             var s = search.Trim();
             if (s.Length > 100) s = s[..100];
 
-            // Escape LIKE wildcards so a user typing % or _ is searching for those characters
-            var pattern = "%" + s.Replace("\\", "\\\\").Replace("%", "\\%").Replace("_", "\\_") + "%";
-            query = query.Where(r => EF.Functions.ILike(r.Name, pattern));
+            // Escape LIKE wildcards so a user typing % _ or [ is searching for those characters
+            var pattern = "%" + s.Replace("\\", "\\\\").Replace("%", "\\%")
+                                 .Replace("_", "\\_").Replace("[", "\\[") + "%";
+            query = query.Where(r => EF.Functions.Like(r.Name, pattern, "\\"));
         }
 
         var list = await query

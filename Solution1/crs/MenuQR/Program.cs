@@ -8,12 +8,13 @@ using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
 using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.HttpOverrides;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // ---------- Database ----------
 builder.Services.AddDbContext<AppDbContext>(opt =>
-    opt.UseNpgsql(builder.Configuration.GetConnectionString("Default")));
+    opt.UseSqlServer(builder.Configuration.GetConnectionString("Default")));
 
 // ---------- Our services ----------
 builder.Services.AddScoped<ITokenService, TokenService>();
@@ -75,8 +76,8 @@ builder.Services.AddRateLimiter(options =>
 
     AddPerIpPolicy("auth", 10);          // login / register
     AddPerIpPolicy("upload", 30);        // image uploads
-    AddPerIpPolicy("public", 120);       // customers browsing menus
-    AddPerIpPolicy("public-order", 10);  // customers placing orders
+    AddPerIpPolicy("public", 300);       // customers browsing menus
+    AddPerIpPolicy("public-order", 40);  // customers placing orders
 });
 
 // ---------- Controllers, SignalR, Swagger ----------
@@ -115,7 +116,21 @@ var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string
 builder.Services.AddCors(opt => opt.AddDefaultPolicy(p =>
     p.WithOrigins(origins).AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
+builder.Services.Configure<ForwardedHeadersOptions>(o =>
+{
+    o.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+    o.KnownNetworks.Clear();
+    o.KnownProxies.Clear();
+});
 var app = builder.Build();
+
+app.UseForwardedHeaders();
+
+// Dastur ishga tushganda bazaga migratsiyalarni avtomatik qo'llaydi
+using (var scope = app.Services.CreateScope())
+{
+    scope.ServiceProvider.GetRequiredService<AppDbContext>().Database.Migrate();
+}
 
 if (app.Environment.IsDevelopment())
 {
